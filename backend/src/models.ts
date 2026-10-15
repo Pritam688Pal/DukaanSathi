@@ -1,0 +1,22 @@
+import mongoose, { Schema, Types } from 'mongoose';
+
+const base = { timestamps: true };
+const userSchema = new Schema({ name: { type: String, required: true, trim: true }, email: { type: String, required: true, lowercase: true, unique: true }, passwordHash: { type: String, required: true }, shop: { type: Schema.Types.ObjectId, ref: 'Shop', required: true } }, base);
+const shopSchema = new Schema({ name: { type: String, required: true, trim: true }, ownerName: { type: String, required: true, trim: true }, phone: String, address: String, currency: { type: String, default: 'INR' } }, base);
+const productSchema = new Schema({ shop: { type: Schema.Types.ObjectId, ref: 'Shop', required: true, index: true }, name: { type: String, required: true, trim: true }, sku: { type: String, trim: true }, barcode: String, category: { type: String, default: 'General' }, unit: { type: String, default: 'pieces' }, purchasePrice: { type: Number, required: true, min: 0 }, sellingPrice: { type: Number, required: true, min: 0 }, quantity: { type: Number, default: 0, min: 0 }, reorderLevel: { type: Number, default: 5, min: 0 }, supplier: { type: Schema.Types.ObjectId, ref: 'Supplier' }, expiryDate: Date, archived: { type: Boolean, default: false } }, base);
+productSchema.index({ shop: 1, sku: 1 }, { unique: true, partialFilterExpression: { sku: { $type: 'string', $gt: '' } } });
+productSchema.index({ shop: 1, name: 'text' });
+const movementSchema = new Schema({ shop: { type: Schema.Types.ObjectId, ref: 'Shop', required: true, index: true }, product: { type: Schema.Types.ObjectId, ref: 'Product', required: true }, delta: { type: Number, required: true }, type: { type: String, enum: ['initial','purchase','sale','return','supplier_return','waste','adjustment','sale_cancel','purchase_cancel'], required: true }, reason: String, reference: Types.ObjectId, performedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true } }, base);
+const supplierSchema = new Schema({ shop: { type: Schema.Types.ObjectId, ref: 'Shop', required: true, index: true }, name: { type: String, required: true, trim: true }, phone: String, email: String, address: String }, base);
+const lineSchema = new Schema({ product: { type: Schema.Types.ObjectId, ref: 'Product', required: true }, name: String, quantity: { type: Number, required: true, min: 0.001 }, unitPrice: { type: Number, required: true, min: 0 }, lineTotal: { type: Number, required: true }, unitCost: Number }, { _id: false });
+const saleSchema = new Schema({ shop: { type: Schema.Types.ObjectId, ref: 'Shop', required: true, index: true }, number: { type: String, required: true }, items: [lineSchema], subtotal: Number, discount: { type: Number, default: 0 }, total: Number, estimatedProfit: Number, paymentMethod: { type: String, enum: ['cash','upi','card','other'], default: 'cash' }, status: { type: String, enum: ['completed','cancelled'], default: 'completed' }, cancelledAt: Date, performedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true } }, base);
+saleSchema.index({ shop: 1, number: 1 }, { unique: true });
+const purchaseSchema = new Schema({ shop: { type: Schema.Types.ObjectId, ref: 'Shop', required: true, index: true }, number: String, supplier: { type: Schema.Types.ObjectId, ref: 'Supplier' }, invoiceNumber: String, items: [lineSchema], total: Number, paid: { type: Boolean, default: false }, status: { type: String, enum: ['received','cancelled'], default: 'received' }, cancelledAt: Date, performedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true } }, base);
+export const User = mongoose.model('User', userSchema);
+export const Shop = mongoose.model('Shop', shopSchema);
+export const Product = mongoose.model('Product', productSchema);
+export const StockMovement = mongoose.model('StockMovement', movementSchema);
+export const Supplier = mongoose.model('Supplier', supplierSchema);
+export const Sale = mongoose.model('Sale', saleSchema);
+export const Purchase = mongoose.model('Purchase', purchaseSchema);
+export { Types };
